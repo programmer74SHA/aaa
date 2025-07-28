@@ -1370,45 +1370,6 @@ func (s *scannerService) validateSwitchScanner(scanner *domain.ScannerDomain) er
 		return fmt.Errorf("password is required for switch scanner")
 	}
 
-	// Validate that the switch type is supported by our system
-	supportedTypes := []string{"Cisco", "Juniper", "Huawei", "HP", "Arista"}
-	if scanner.Type != "" {
-		isSupported := false
-		for _, supportedType := range supportedTypes {
-			if strings.EqualFold(scanner.Type, supportedType) {
-				scanner.Type = supportedType // Normalize
-				isSupported = true
-				break
-			}
-		}
-		if !isSupported {
-			return fmt.Errorf("unsupported switch type: %s. Supported types: %v", scanner.Type, supportedTypes)
-		}
-	} else {
-		// Default to Cisco if no type specified
-		scanner.Type = "Cisco"
-	}
-
-	// Business rule: certain device types require specific protocols
-	if scanner.Protocol == "" {
-		scanner.Protocol = "SSH" // Default to SSH
-	} else if scanner.Type == "Cisco" && strings.ToUpper(scanner.Protocol) != "SSH" && strings.ToUpper(scanner.Protocol) != "TELNET" {
-		return fmt.Errorf("Cisco devices require SSH or Telnet protocol")
-	}
-
-	// Business rule: validate port range for device type
-	if scanner.Port == "" {
-		scanner.Port = "22" // Default to SSH port
-	} else {
-		if portNum, err := strconv.Atoi(scanner.Port); err != nil {
-			return fmt.Errorf("invalid port number: %s", scanner.Port)
-		} else if portNum < 1 || portNum > 65535 {
-			return fmt.Errorf("port number must be between 1 and 65535: %d", portNum)
-		} else if scanner.Type == "Cisco" && portNum != 22 && portNum != 23 {
-			return fmt.Errorf("Cisco devices typically use port 22 (SSH) or 23 (Telnet), got %d", portNum)
-		}
-	}
-
 	return nil
 }
 

@@ -24,13 +24,13 @@ var (
 // ValidateHARole validates the HA role enum value
 func ValidateHARole(haRole string) error {
 	haRole = strings.ToLower(haRole)
-	validRoles := []string{"active", "standby", "passive"}
+	validRoles := []string{"active", "passive", "standalone"}
 	for _, role := range validRoles {
 		if haRole == role {
 			return nil
 		}
 	}
-	return errors.New("ha_role must be one of: active, standby, passive")
+	return errors.New("ha_role must be one of: active, passive, standalone")
 }
 
 // ValidateStatus validates the status enum value

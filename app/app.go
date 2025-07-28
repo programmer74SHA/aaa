@@ -18,6 +18,8 @@ import (
 	scannerPort "gitlab.apk-group.net/siem/backend/asset-discovery/internal/scanner/port"
 	"gitlab.apk-group.net/siem/backend/asset-discovery/internal/scheduler"
 	schedulerPort "gitlab.apk-group.net/siem/backend/asset-discovery/internal/scheduler/port"
+	switchService "gitlab.apk-group.net/siem/backend/asset-discovery/internal/switch"
+	switchPort "gitlab.apk-group.net/siem/backend/asset-discovery/internal/switch/port"
 	"gitlab.apk-group.net/siem/backend/asset-discovery/internal/user"
 	userDomain "gitlab.apk-group.net/siem/backend/asset-discovery/internal/user/domain"
 	userPort "gitlab.apk-group.net/siem/backend/asset-discovery/internal/user/port"
@@ -37,6 +39,7 @@ type app struct {
 	scannerService      scannerPort.Service
 	schedulerService    schedulerPort.Service
 	firewallService     firewallPort.Service
+	switchService       switchPort.Service
 	schedulerRunner     *scheduler.SchedulerRunner
 	nmapScanner         *scanner.NmapRunner
 	vcenterScanner      *scanner.VCenterRunner
@@ -150,6 +153,26 @@ func (a *app) createSwitchRunner(db *gorm.DB) *scanner.SwitchRunner {
 	)
 }
 
+// switchServiceWithDB creates a switch service with a specific database connection
+func (a *app) switchServiceWithDB(db *gorm.DB) switchPort.Service {
+	// Get the switch repository that implements both Repository and SwitchDataRepository
+	switchRepo := a.GetSwitchRepositoryForDB(db)
+
+	// Create the switch service
+	return switchService.NewSwitchService(switchRepo, switchRepo)
+}
+
+func (a *app) SwitchService(ctx context.Context) switchPort.Service {
+	db := appCtx.GetDB(ctx)
+	if db == nil {
+		if a.switchService == nil {
+			a.switchService = a.switchServiceWithDB(a.db)
+		}
+		return a.switchService
+	}
+	return a.switchServiceWithDB(db)
+}
+
 func NewApp(cfg config.Config) (AppContainer, error) {
 	a := &app{
 		cfg: cfg,
@@ -194,6 +217,9 @@ func NewApp(cfg config.Config) (AppContainer, error) {
 
 	// Initialize scanner service (internal domain layer) with unified repository
 	a.scannerService = scanner.NewScannerService(a.scannerRepo, a.db)
+
+	// Initialize switch service (add this after existing service initialization)
+	a.switchService = switchService.NewSwitchService(a.switchRepository, a.switchRepository)
 
 	// Initialize scanner factory and register scanners
 	a.scannerFactory = scheduler.NewScannerFactory()
@@ -409,6 +435,10 @@ func (a *app) ValidateConfiguration() error {
 		return fmt.Errorf("switch scanner not initialized")
 	}
 
+	if a.switchService == nil {
+		return fmt.Errorf("switch service not initialized")
+	}
+
 	return nil
 }
 
@@ -419,6 +449,7 @@ func (a *app) GetComponentStatus() map[string]bool {
 		"AssetService":        a.assetService != nil,
 		"ScannerService":      a.scannerService != nil,
 		"SchedulerService":    a.schedulerService != nil,
+		"SwitchService":       a.switchService != nil,
 		"UnifiedScannerRepo":  a.scannerRepo != nil,
 		"SwitchRepository":    a.switchRepository != nil,
 		"SwitchDeviceFactory": a.switchDeviceFactory != nil,

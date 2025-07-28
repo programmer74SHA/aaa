@@ -11,6 +11,7 @@ import (
 	FirewallPort "gitlab.apk-group.net/siem/backend/asset-discovery/internal/firewall/port"
 	ScannerPort "gitlab.apk-group.net/siem/backend/asset-discovery/internal/scanner/port"
 	SchedulerPort "gitlab.apk-group.net/siem/backend/asset-discovery/internal/scheduler/port"
+	SwitchPort "gitlab.apk-group.net/siem/backend/asset-discovery/internal/switch/port" // Add this import
 	UserPort "gitlab.apk-group.net/siem/backend/asset-discovery/internal/user/port"
 	"gorm.io/gorm"
 )
@@ -21,12 +22,13 @@ type AppContainer interface {
 	ScannerService(ctx context.Context) ScannerPort.Service
 	SchedulerService(ctx context.Context) SchedulerPort.Service
 	FirewallService(ctx context.Context) FirewallPort.Service
+	SwitchService(ctx context.Context) SwitchPort.Service // Add this line
 	StartScheduler()
 	StopScheduler()
 	ScanJobService(ctx context.Context) scanJobPort.Service
 	Config() config.Config
 	DB() *gorm.DB
 
-	// New method to access the API scanner service
+	// Method to access the API scanner service
 	GetAPIScannerService() *service.ScannerService
 }

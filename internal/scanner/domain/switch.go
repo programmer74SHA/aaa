@@ -317,19 +317,6 @@ type ScanStrategy struct {
 	VendorSpecificFlags map[string]string `json:"vendor_specific_flags"`
 }
 
-// SwitchCapabilities represents what a switch device supports
-type SwitchCapabilities struct {
-	SupportsVLANs       bool     `json:"supports_vlans"`
-	SupportsRouting     bool     `json:"supports_routing"`
-	SupportsDiscovery   bool     `json:"supports_discovery"`
-	SupportedProtocols  []string `json:"supported_protocols"`
-	MaxVLANs            int      `json:"max_vlans"`
-	MaxInterfaces       int      `json:"max_interfaces"`
-	SupportsStackable   bool     `json:"supports_stackable"`
-	SupportsRedundancy  bool     `json:"supports_redundancy"`
-	ManagementProtocols []string `json:"management_protocols"`
-}
-
 // SwitchConnectionConfig represents connection configuration
 type SwitchConnectionConfig struct {
 	Host              string        `json:"host"`

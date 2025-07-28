@@ -1,4 +1,4 @@
-package switch
+package switch_scanner
 
 import (
 	"context"
@@ -13,8 +13,8 @@ import (
 
 // switchService implements the switch service interface
 type switchService struct {
-	repo        switchPort.Repository
-	switchRepo  SwitchDataRepository // Interface for switch data operations
+	repo       switchPort.Repository
+	switchRepo SwitchDataRepository // Interface for switch data operations
 }
 
 // SwitchDataRepository defines operations for switch data (to avoid circular imports)
@@ -23,7 +23,7 @@ type SwitchDataRepository interface {
 	GetSwitchByScannerID(ctx context.Context, scannerID int64) (*domain.SwitchInfo, error)
 	ListSwitches(ctx context.Context, filter domain.SwitchFilter, limit, offset int, sortField, sortOrder string) ([]domain.SwitchInfo, int, error)
 	GetSwitchStats(ctx context.Context) (map[string]interface{}, error)
-	
+
 	// Methods for detailed data
 	GetSwitchDataByAssetID(ctx context.Context, assetID uuid.UUID) (*scannerDomain.SwitchData, error)
 }
@@ -62,7 +62,7 @@ func (s *switchService) GetSwitchByID(ctx context.Context, switchID uuid.UUID) (
 		switchInfo.Interfaces = switchData.Interfaces
 		switchInfo.VLANs = switchData.VLANs
 		switchInfo.Neighbors = switchData.Neighbors
-		
+
 		// Update counts with actual data
 		switchInfo.NumberOfPorts = len(switchData.Interfaces)
 		switchInfo.NumberOfVLANs = len(switchData.VLANs)
@@ -107,7 +107,7 @@ func (s *switchService) GetSwitchByScannerID(ctx context.Context, scannerID int6
 		switchInfo.Interfaces = switchData.Interfaces
 		switchInfo.VLANs = switchData.VLANs
 		switchInfo.Neighbors = switchData.Neighbors
-		
+
 		// Update counts with actual data
 		switchInfo.NumberOfPorts = len(switchData.Interfaces)
 		switchInfo.NumberOfVLANs = len(switchData.VLANs)

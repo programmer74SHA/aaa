@@ -428,17 +428,28 @@ func (s *FirewallService) ListFirewalls(ctx context.Context, req *pb.ListFirewal
 		}, err
 	}
 
-	// Convert domain models to simplified protobuf format (only asset and details)
-	logger.DebugContextWithFields(ctx, "API firewall service: Converting domain models to protobuf", map[string]interface{}{
+	// Convert domain models to flattened protobuf format
+	logger.DebugContextWithFields(ctx, "API firewall service: Converting domain models to flattened protobuf", map[string]interface{}{
 		"firewall_count": len(result.Firewalls),
 		"total_count":    result.TotalCount,
 	})
 
-	contents := make([]*pb.FirewallListItem, len(result.Firewalls))
+	contents := make([]*pb.FirewallListItemFlat, len(result.Firewalls))
 	for i, firewallDomain := range result.Firewalls {
-		// Convert asset
-		asset := &pb.FirewallAsset{
-			Id:               firewallDomain.Asset.ID,
+		// Convert to flattened format by combining asset and details fields
+		var lastSyncStr string
+		if firewallDomain.Details.LastSync != nil {
+			lastSyncStr = firewallDomain.Details.LastSync.Format("2006-01-02T15:04:05Z")
+		}
+
+		var discoveredBy string
+		if firewallDomain.Asset.DiscoveredBy != nil {
+			discoveredBy = *firewallDomain.Asset.DiscoveredBy
+		}
+
+		contents[i] = &pb.FirewallListItemFlat{
+			// Asset fields
+			AssetId:          firewallDomain.Asset.ID,
 			VendorCode:       firewallDomain.Asset.VendorCode,
 			Name:             firewallDomain.Asset.Name,
 			Domain:           firewallDomain.Asset.Domain,
@@ -447,24 +458,13 @@ func (s *FirewallService) ListFirewalls(ctx context.Context, req *pb.ListFirewal
 			OsVersion:        firewallDomain.Asset.OSVersion,
 			Description:      firewallDomain.Asset.Description,
 			AssetType:        firewallDomain.Asset.AssetType,
+			DiscoveredBy:     discoveredBy,
 			Risk:             int32(firewallDomain.Asset.Risk),
 			LoggingCompleted: firewallDomain.Asset.LoggingCompleted,
 			AssetValue:       firewallDomain.Asset.AssetValue,
-		}
-
-		if firewallDomain.Asset.DiscoveredBy != nil {
-			asset.DiscoveredBy = *firewallDomain.Asset.DiscoveredBy
-		}
-
-		// Convert details
-		var lastSyncStr string
-		if firewallDomain.Details.LastSync != nil {
-			lastSyncStr = firewallDomain.Details.LastSync.Format("2006-01-02T15:04:05Z")
-		}
-
-		details := &pb.FirewallDetails{
-			Id:              firewallDomain.Details.ID,
-			AssetId:         firewallDomain.Details.AssetID,
+			
+			// Details fields
+			DetailsId:       firewallDomain.Details.ID,
 			Model:           firewallDomain.Details.Model,
 			FirmwareVersion: firewallDomain.Details.FirmwareVersion,
 			SerialNumber:    firewallDomain.Details.SerialNumber,
@@ -476,11 +476,6 @@ func (s *FirewallService) ListFirewalls(ctx context.Context, req *pb.ListFirewal
 			Status:          firewallDomain.Details.Status,
 			LastSync:        lastSyncStr,
 			SyncStatus:      firewallDomain.Details.SyncStatus,
-		}
-
-		contents[i] = &pb.FirewallListItem{
-			Asset:   asset,
-			Details: details,
 		}
 	}
 

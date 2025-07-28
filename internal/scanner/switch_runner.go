@@ -222,10 +222,6 @@ func (r *SwitchRunner) getOrCreateAssetForScanner(ctx context.Context, scanner s
 	return assetID, nil
 }
 
-// ============================================================================
-// Helper methods
-// ============================================================================
-
 func (r *SwitchRunner) getDefaultPort(scanner scannerDomain.ScannerDomain) string {
 	if scanner.Port != "" {
 		return scanner.Port

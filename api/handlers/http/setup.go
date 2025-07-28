@@ -36,6 +36,7 @@ func Run(appContainer app.AppContainer, cfg config.ServerConfig) error {
 	registerScannerAPI(appContainer, api.Group("/scanners"))
 	registerFirewallAPI(appContainer, api)
 	registerDashboardAPI(appContainer, api)
+	registerSwitchAPI(appContainer, api)
 
 	tlsConfig := &tls.Config{
 		MinVersion: tls.VersionTLS12, // Set minimum TLS version (TLS 1.2)
@@ -138,7 +139,6 @@ func registerFirewallAPI(appContainer app.AppContainer, router fiber.Router) {
 	firewalls.Delete("/", DeleteAllFirewalls(firewallSvcGetter))
 }
 
-
 func registerSwitchAPI(appContainer app.AppContainer, router fiber.Router) {
 	switchSvcGetter := switchServiceGetter(appContainer)
 
@@ -147,11 +147,12 @@ func registerSwitchAPI(appContainer app.AppContainer, router fiber.Router) {
 
 	// Main switch endpoints
 	switches.Get("/", GetSwitches(switchSvcGetter))
+	switches.Get("/stats", GetSwitchStats(switchSvcGetter))
 	switches.Get("/:id", GetSwitchByID(switchSvcGetter))
+	switches.Get("/scanner/:id", GetSwitchByScannerID(switchSvcGetter))
 
 	// Switch detail endpoints
 	switches.Get("/:id/interfaces", GetSwitchInterfaces(switchSvcGetter))
 	switches.Get("/:id/vlans", GetSwitchVLANs(switchSvcGetter))
 	switches.Get("/:id/neighbors", GetSwitchNeighbors(switchSvcGetter))
 }
-

@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	assetPort "gitlab.apk-group.net/siem/backend/asset-discovery/internal/asset/port"
 	scannerDomain "gitlab.apk-group.net/siem/backend/asset-discovery/internal/scanner/domain"
+	"gitlab.apk-group.net/siem/backend/asset-discovery/internal/switch/domain"
 	"gitlab.apk-group.net/siem/backend/asset-discovery/pkg/adapter/storage/types"
 	"gitlab.apk-group.net/siem/backend/asset-discovery/pkg/adapter/storage/types/mapper"
 	"gitlab.apk-group.net/siem/backend/asset-discovery/pkg/logger"
@@ -1171,4 +1172,350 @@ func (r *SwitchRepository) createVLANVendorConfig(vlan scannerDomain.SwitchVLAN)
 		return "{}"
 	}
 	return config
+}
+
+func (r *SwitchRepository) GetSwitchByAssetID(ctx context.Context, assetID uuid.UUID) (*domain.SwitchInfo, error) {
+	logger.InfoContext(ctx, "[SwitchRepo] Getting switch info by asset ID: %s", assetID.String())
+
+	// Query to get switch information from assets and related metadata
+	var result struct {
+		ID              string     `json:"id"`
+		Name            string     `json:"name"`
+		Hostname        string     `json:"hostname"`
+		IPAddress       string     `json:"ip_address"`
+		Brand           string     `json:"brand"`
+		Model           string     `json:"model"`
+		SoftwareVersion string     `json:"software_version"`
+		SerialNumber    string     `json:"serial_number"`
+		SystemUptime    string     `json:"system_uptime"`
+		ManagementIP    string     `json:"management_ip"`
+		EthernetMAC     string     `json:"ethernet_mac"`
+		Status          string     `json:"status"`
+		LastScanTime    *time.Time `json:"last_scan_time"`
+		LastScanStatus  string     `json:"last_scan_status"`
+		CreatedAt       time.Time  `json:"created_at"`
+		UpdatedAt       time.Time  `json:"updated_at"`
+		ScannerID       int64      `json:"scanner_id"`
+	}
+
+	err := r.db.WithContext(ctx).Table("assets").
+		Select(`
+			assets.id,
+			assets.name,
+			assets.hostname,
+			COALESCE(ips.ip_address, '') as ip_address,
+			COALESCE(vendors.vendor_name, '') as brand,
+			COALESCE(assets.os_name, '') as model,
+			COALESCE(assets.os_version, '') as software_version,
+			'' as serial_number,
+			'' as system_uptime,
+			COALESCE(ips.ip_address, '') as management_ip,
+			COALESCE(ips.mac_address, '') as ethernet_mac,
+			'online' as status,
+			assets.updated_at as last_scan_time,
+			'success' as last_scan_status,
+			assets.created_at,
+			assets.updated_at,
+			COALESCE(switch_metadata.scanner_id, 0) as scanner_id
+		`).
+		Joins("LEFT JOIN ips ON assets.id = ips.asset_id").
+		Joins("LEFT JOIN vendors ON assets.vendor_id = vendors.id").
+		Joins("LEFT JOIN switch_metadata ON assets.id = switch_metadata.asset_id").
+		Where("assets.id = ? AND assets.deleted_at IS NULL", assetID.String()).
+		First(&result).Error
+
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get switch by asset ID: %w", err)
+	}
+
+	// Get counts for interfaces, VLANs, and neighbors
+	var interfaceCount, vlanCount, neighborCount int64
+
+	r.db.WithContext(ctx).Table("interfaces").
+		Where("asset_id = ? AND deleted_at IS NULL", assetID.String()).
+		Count(&interfaceCount)
+
+	r.db.WithContext(ctx).Table("vlans").
+		Where("asset_id = ? AND deleted_at IS NULL", assetID.String()).
+		Count(&vlanCount)
+
+	r.db.WithContext(ctx).Table("switch_neighbors").
+		Where("switch_id = ?", assetID.String()).
+		Count(&neighborCount)
+
+	switchInfo := &domain.SwitchInfo{
+		ID:                result.ID,
+		ScannerID:         result.ScannerID,
+		Name:              result.Name,
+		Hostname:          result.Hostname,
+		IPAddress:         result.IPAddress,
+		Brand:             result.Brand,
+		Model:             result.Model,
+		SoftwareVersion:   result.SoftwareVersion,
+		SerialNumber:      result.SerialNumber,
+		SystemUptime:      result.SystemUptime,
+		ManagementIP:      result.ManagementIP,
+		EthernetMAC:       result.EthernetMAC,
+		NumberOfPorts:     int(interfaceCount),
+		NumberOfVLANs:     int(vlanCount),
+		NumberOfNeighbors: int(neighborCount),
+		Status:            result.Status,
+		LastScanTime:      result.LastScanTime,
+		LastScanStatus:    result.LastScanStatus,
+		CreatedAt:         result.CreatedAt,
+		UpdatedAt:         result.UpdatedAt,
+	}
+
+	logger.InfoContext(ctx, "[SwitchRepo] Successfully retrieved switch info for asset %s", assetID.String())
+	return switchInfo, nil
+}
+
+// GetSwitchByScannerID retrieves switch info by scanner ID (implements Repository interface)
+func (r *SwitchRepository) GetSwitchByScannerID(ctx context.Context, scannerID int64) (*domain.SwitchInfo, error) {
+	logger.InfoContext(ctx, "[SwitchRepo] Getting switch info by scanner ID: %d", scannerID)
+
+	// First get the asset ID from switch metadata
+	var metadata types.SwitchMetadata
+	err := r.db.WithContext(ctx).Table("switch_metadata").
+		Where("scanner_id = ?", scannerID).
+		First(&metadata).Error
+
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get switch metadata for scanner %d: %w", scannerID, err)
+	}
+
+	// Parse asset ID and get full switch info
+	assetID, err := uuid.Parse(metadata.AssetID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid asset ID in metadata: %w", err)
+	}
+
+	return r.GetSwitchByAssetID(ctx, assetID)
+}
+
+// ListSwitches retrieves switches with filtering and pagination (implements Repository interface)
+func (r *SwitchRepository) ListSwitches(ctx context.Context, filter domain.SwitchFilter, limit, offset int, sortField, sortOrder string) ([]domain.SwitchInfo, int, error) {
+	logger.InfoContext(ctx, "[SwitchRepo] Listing switches with filter: %+v", filter)
+
+	// Build base query
+	query := r.db.WithContext(ctx).Table("assets").
+		Select(`
+			assets.id,
+			assets.name,
+			assets.hostname,
+			COALESCE(ips.ip_address, '') as ip_address,
+			COALESCE(vendors.vendor_name, '') as brand,
+			COALESCE(assets.os_name, '') as model,
+			COALESCE(assets.os_version, '') as software_version,
+			'' as serial_number,
+			'' as system_uptime,
+			COALESCE(ips.ip_address, '') as management_ip,
+			COALESCE(ips.mac_address, '') as ethernet_mac,
+			'online' as status,
+			assets.updated_at as last_scan_time,
+			'success' as last_scan_status,
+			assets.created_at,
+			assets.updated_at,
+			COALESCE(switch_metadata.scanner_id, 0) as scanner_id
+		`).
+		Joins("LEFT JOIN ips ON assets.id = ips.asset_id").
+		Joins("LEFT JOIN vendors ON assets.vendor_id = vendors.id").
+		Joins("INNER JOIN switch_metadata ON assets.id = switch_metadata.asset_id").
+		Where("assets.deleted_at IS NULL")
+
+	// Apply filters
+	if filter.Name != "" {
+		query = query.Where("assets.name LIKE ?", "%"+filter.Name+"%")
+	}
+	if filter.Brand != "" {
+		query = query.Where("vendors.vendor_name LIKE ?", "%"+filter.Brand+"%")
+	}
+	if filter.IPAddress != "" {
+		query = query.Where("ips.ip_address LIKE ?", "%"+filter.IPAddress+"%")
+	}
+	if filter.ScannerID != nil {
+		query = query.Where("switch_metadata.scanner_id = ?", *filter.ScannerID)
+	}
+
+	// Get total count
+	var totalCount int64
+	countQuery := query
+	if err := countQuery.Count(&totalCount).Error; err != nil {
+		return nil, 0, fmt.Errorf("failed to count switches: %w", err)
+	}
+
+	// Apply sorting
+	orderClause := r.buildOrderClause(sortField, sortOrder)
+	query = query.Order(orderClause)
+
+	// Apply pagination
+	if limit > 0 {
+		query = query.Limit(limit)
+	}
+	if offset > 0 {
+		query = query.Offset(offset)
+	}
+
+	// Execute query
+	var results []struct {
+		ID              string     `json:"id"`
+		Name            string     `json:"name"`
+		Hostname        string     `json:"hostname"`
+		IPAddress       string     `json:"ip_address"`
+		Brand           string     `json:"brand"`
+		Model           string     `json:"model"`
+		SoftwareVersion string     `json:"software_version"`
+		SerialNumber    string     `json:"serial_number"`
+		SystemUptime    string     `json:"system_uptime"`
+		ManagementIP    string     `json:"management_ip"`
+		EthernetMAC     string     `json:"ethernet_mac"`
+		Status          string     `json:"status"`
+		LastScanTime    *time.Time `json:"last_scan_time"`
+		LastScanStatus  string     `json:"last_scan_status"`
+		CreatedAt       time.Time  `json:"created_at"`
+		UpdatedAt       time.Time  `json:"updated_at"`
+		ScannerID       int64      `json:"scanner_id"`
+	}
+
+	if err := query.Find(&results).Error; err != nil {
+		return nil, 0, fmt.Errorf("failed to list switches: %w", err)
+	}
+
+	// Convert to domain objects
+	switches := make([]domain.SwitchInfo, len(results))
+	for i, result := range results {
+		switches[i] = domain.SwitchInfo{
+			ID:              result.ID,
+			ScannerID:       result.ScannerID,
+			Name:            result.Name,
+			Hostname:        result.Hostname,
+			IPAddress:       result.IPAddress,
+			Brand:           result.Brand,
+			Model:           result.Model,
+			SoftwareVersion: result.SoftwareVersion,
+			SerialNumber:    result.SerialNumber,
+			SystemUptime:    result.SystemUptime,
+			ManagementIP:    result.ManagementIP,
+			EthernetMAC:     result.EthernetMAC,
+			Status:          result.Status,
+			LastScanTime:    result.LastScanTime,
+			LastScanStatus:  result.LastScanStatus,
+			CreatedAt:       result.CreatedAt,
+			UpdatedAt:       result.UpdatedAt,
+		}
+
+		// Get counts for this switch
+		var interfaceCount, vlanCount, neighborCount int64
+		assetID := result.ID
+
+		r.db.WithContext(ctx).Table("interfaces").
+			Where("asset_id = ? AND deleted_at IS NULL", assetID).
+			Count(&interfaceCount)
+
+		r.db.WithContext(ctx).Table("vlans").
+			Where("asset_id = ? AND deleted_at IS NULL", assetID).
+			Count(&vlanCount)
+
+		r.db.WithContext(ctx).Table("switch_neighbors").
+			Where("switch_id = ?", assetID).
+			Count(&neighborCount)
+
+		switches[i].NumberOfPorts = int(interfaceCount)
+		switches[i].NumberOfVLANs = int(vlanCount)
+		switches[i].NumberOfNeighbors = int(neighborCount)
+	}
+
+	logger.InfoContext(ctx, "[SwitchRepo] Successfully listed %d switches (total: %d)", len(switches), totalCount)
+	return switches, int(totalCount), nil
+}
+
+// GetSwitchStats retrieves aggregated switch statistics (implements Repository interface)
+func (r *SwitchRepository) GetSwitchStats(ctx context.Context) (map[string]interface{}, error) {
+	logger.InfoContext(ctx, "[SwitchRepo] Getting switch statistics")
+
+	stats := make(map[string]interface{})
+
+	// Total switches
+	var totalSwitches int64
+	r.db.WithContext(ctx).Table("assets").
+		Joins("INNER JOIN switch_metadata ON assets.id = switch_metadata.asset_id").
+		Where("assets.deleted_at IS NULL").
+		Count(&totalSwitches)
+
+	// Online switches (assuming all are online for now)
+	onlineSwitches := totalSwitches
+
+	// Total interfaces
+	var totalInterfaces int64
+	r.db.WithContext(ctx).Table("interfaces").
+		Joins("INNER JOIN switch_metadata ON interfaces.asset_id = switch_metadata.asset_id").
+		Where("interfaces.deleted_at IS NULL").
+		Count(&totalInterfaces)
+
+	// Total VLANs
+	var totalVLANs int64
+	r.db.WithContext(ctx).Table("vlans").
+		Joins("INNER JOIN switch_metadata ON vlans.asset_id = switch_metadata.asset_id").
+		Where("vlans.deleted_at IS NULL").
+		Count(&totalVLANs)
+
+	// Total neighbors
+	var totalNeighbors int64
+	r.db.WithContext(ctx).Table("switch_neighbors").Count(&totalNeighbors)
+
+	// Brand distribution
+	var brandStats []struct {
+		Brand string `json:"brand"`
+		Count int64  `json:"count"`
+	}
+	r.db.WithContext(ctx).Table("assets").
+		Select("vendors.vendor_name as brand, COUNT(*) as count").
+		Joins("INNER JOIN switch_metadata ON assets.id = switch_metadata.asset_id").
+		Joins("LEFT JOIN vendors ON assets.vendor_id = vendors.id").
+		Where("assets.deleted_at IS NULL").
+		Group("vendors.vendor_name").
+		Find(&brandStats)
+
+	stats["total_switches"] = totalSwitches
+	stats["online_switches"] = onlineSwitches
+	stats["offline_switches"] = totalSwitches - onlineSwitches
+	stats["total_interfaces"] = totalInterfaces
+	stats["total_vlans"] = totalVLANs
+	stats["total_neighbors"] = totalNeighbors
+	stats["brand_distribution"] = brandStats
+
+	logger.InfoContext(ctx, "[SwitchRepo] Successfully retrieved switch statistics")
+	return stats, nil
+}
+
+// buildOrderClause builds the ORDER BY clause for queries
+func (r *SwitchRepository) buildOrderClause(sortField, sortOrder string) string {
+	// Map API field names to database columns
+	fieldMap := map[string]string{
+		"name":       "assets.name",
+		"hostname":   "assets.hostname",
+		"ip":         "ips.ip_address",
+		"ip_address": "ips.ip_address",
+		"brand":      "vendors.vendor_name",
+		"model":      "assets.os_name",
+		"created_at": "assets.created_at",
+		"updated_at": "assets.updated_at",
+	}
+
+	dbField, exists := fieldMap[sortField]
+	if !exists {
+		dbField = "assets.name" // Default to name
+	}
+
+	if sortOrder != "asc" && sortOrder != "desc" {
+		sortOrder = "asc" // Default to ascending
+	}
+
+	return fmt.Sprintf("%s %s", dbField, strings.ToUpper(sortOrder))
 }

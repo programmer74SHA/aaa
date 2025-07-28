@@ -48,3 +48,13 @@ func firewallServiceGetter(appContainer app.AppContainer) ServiceGetter[*service
 		return service.NewFirewallService(appContainer.FirewallService(ctx))
 	}
 }
+
+func switchServiceGetter(appContainer app.AppContainer) ServiceGetter[*service.SwitchService] {
+	return func(ctx context.Context) *service.SwitchService {
+		// Get the internal switch service from the app container
+		internalSwitchService := appContainer.SwitchService(ctx)
+
+		// Create the API switch service
+		return service.NewSwitchService(internalSwitchService)
+	}
+}

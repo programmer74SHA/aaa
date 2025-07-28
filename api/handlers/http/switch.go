@@ -6,6 +6,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"gitlab.apk-group.net/siem/backend/asset-discovery/api/service"
+	"gitlab.apk-group.net/siem/backend/asset-discovery/internal/switch/domain"
 	"gitlab.apk-group.net/siem/backend/asset-discovery/pkg/context"
 )
 
@@ -126,35 +127,79 @@ func GetSwitchByID(svcGetter ServiceGetter[*service.SwitchService]) fiber.Handle
 		logger.InfoContext(ctx, "Getting switch by ID: %s", switchID.String())
 
 		// Call service
-		switchInfo, err := srv.GetSwitchByID(ctx, switchID)
+		response, err := srv.GetSwitchByID(ctx, switchID)
 		if err != nil {
 			logger.ErrorContext(ctx, "Error getting switch: %v", err)
+
+			if err == service.ErrSwitchNotFound {
+				return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{
+					Success: false,
+					Error:   "Switch not found",
+				})
+			}
+
 			return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
 				Success: false,
 				Error:   err.Error(),
 			})
 		}
 
-		if switchInfo == nil {
-			logger.InfoContext(ctx, "Switch not found: %s", switchID.String())
-			return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{
-				Success: false,
-				Error:   "Switch not found",
-			})
-		}
-
-		logger.InfoContext(ctx, "Successfully retrieved switch: %s", switchInfo.Name)
-
-		return c.JSON(domain.SwitchDetailResponse{
-			Switch:  *switchInfo,
-			Success: true,
-		})
+		logger.InfoContext(ctx, "Successfully retrieved switch: %s", response.Switch.Name)
+		return c.JSON(response)
 	}
 }
 
-// func GetSwitchByScannerID(
+// GetSwitchByScannerID handles GET /api/v1/switches/scanner/:id - Get switch by scanner ID
+func GetSwitchByScannerID(svcGetter ServiceGetter[*service.SwitchService]) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		ctx := c.UserContext()
+		srv := svcGetter(ctx)
+		logger := context.GetLogger(ctx)
 
-// func GetSwitchStats(
+		// Get scanner ID from path parameter
+		scannerIDStr := c.Params("id")
+		if scannerIDStr == "" {
+			logger.WarnContext(ctx, "Scanner ID is empty")
+			return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
+				Success: false,
+				Error:   "Scanner ID is required",
+			})
+		}
+
+		// Parse scanner ID
+		scannerID, err := strconv.ParseInt(scannerIDStr, 10, 64)
+		if err != nil {
+			logger.WarnContext(ctx, "Invalid scanner ID format: %s", scannerIDStr)
+			return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
+				Success: false,
+				Error:   "Invalid scanner ID format",
+			})
+		}
+
+		logger.InfoContext(ctx, "Getting switch by scanner ID: %d", scannerID)
+
+		// Call service
+		response, err := srv.GetSwitchByScannerID(ctx, scannerID)
+		if err != nil {
+			logger.ErrorContext(ctx, "Error getting switch: %v", err)
+
+			if err == service.ErrSwitchNotFound {
+				return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{
+					Success: false,
+					Error:   "Switch not found",
+				})
+			}
+
+			return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+				Success: false,
+				Error:   err.Error(),
+			})
+		}
+
+		logger.InfoContext(ctx, "Successfully retrieved switch for scanner: %d", scannerID)
+		return c.JSON(response)
+	}
+}
 
 // GetSwitchInterfaces handles GET /api/v1/switches/:id/interfaces - Get switch interfaces
 func GetSwitchInterfaces(svcGetter ServiceGetter[*service.SwitchService]) fiber.Handler {
@@ -184,26 +229,27 @@ func GetSwitchInterfaces(svcGetter ServiceGetter[*service.SwitchService]) fiber.
 		logger.InfoContext(ctx, "Getting interfaces for switch: %s", switchID.String())
 
 		// Get switch with detailed data
-		switchInfo, err := srv.GetSwitchByID(ctx, switchID)
+		response, err := srv.GetSwitchByID(ctx, switchID)
 		if err != nil {
 			logger.ErrorContext(ctx, "Error getting switch: %v", err)
+
+			if err == service.ErrSwitchNotFound {
+				return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{
+					Success: false,
+					Error:   "Switch not found",
+				})
+			}
+
 			return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
 				Success: false,
 				Error:   err.Error(),
 			})
 		}
 
-		if switchInfo == nil {
-			return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{
-				Success: false,
-				Error:   "Switch not found",
-			})
-		}
-
 		return c.JSON(map[string]interface{}{
 			"data": map[string]interface{}{
-				"interfaces": switchInfo.Interfaces,
-				"count":      len(switchInfo.Interfaces),
+				"interfaces": response.Switch.Interfaces,
+				"count":      len(response.Switch.Interfaces),
 			},
 			"success": true,
 		})
@@ -238,26 +284,27 @@ func GetSwitchVLANs(svcGetter ServiceGetter[*service.SwitchService]) fiber.Handl
 		logger.InfoContext(ctx, "Getting VLANs for switch: %s", switchID.String())
 
 		// Get switch with detailed data
-		switchInfo, err := srv.GetSwitchByID(ctx, switchID)
+		response, err := srv.GetSwitchByID(ctx, switchID)
 		if err != nil {
 			logger.ErrorContext(ctx, "Error getting switch: %v", err)
+
+			if err == service.ErrSwitchNotFound {
+				return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{
+					Success: false,
+					Error:   "Switch not found",
+				})
+			}
+
 			return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
 				Success: false,
 				Error:   err.Error(),
 			})
 		}
 
-		if switchInfo == nil {
-			return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{
-				Success: false,
-				Error:   "Switch not found",
-			})
-		}
-
 		return c.JSON(map[string]interface{}{
 			"data": map[string]interface{}{
-				"vlans": switchInfo.VLANs,
-				"count": len(switchInfo.VLANs),
+				"vlans": response.Switch.VLANs,
+				"count": len(response.Switch.VLANs),
 			},
 			"success": true,
 		})
@@ -292,27 +339,56 @@ func GetSwitchNeighbors(svcGetter ServiceGetter[*service.SwitchService]) fiber.H
 		logger.InfoContext(ctx, "Getting neighbors for switch: %s", switchID.String())
 
 		// Get switch with detailed data
-		switchInfo, err := srv.GetSwitchByID(ctx, switchID)
+		response, err := srv.GetSwitchByID(ctx, switchID)
 		if err != nil {
 			logger.ErrorContext(ctx, "Error getting switch: %v", err)
+
+			if err == service.ErrSwitchNotFound {
+				return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{
+					Success: false,
+					Error:   "Switch not found",
+				})
+			}
+
 			return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
 				Success: false,
 				Error:   err.Error(),
 			})
 		}
 
-		if switchInfo == nil {
-			return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{
+		return c.JSON(map[string]interface{}{
+			"data": map[string]interface{}{
+				"neighbors": response.Switch.Neighbors,
+				"count":     len(response.Switch.Neighbors),
+			},
+			"success": true,
+		})
+	}
+}
+
+// GetSwitchStats handles GET /api/v1/switches/stats - Get switch statistics
+func GetSwitchStats(svcGetter ServiceGetter[*service.SwitchService]) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		ctx := c.UserContext()
+		srv := svcGetter(ctx)
+		logger := context.GetLogger(ctx)
+
+		logger.InfoContext(ctx, "Getting switch statistics")
+
+		// Call service
+		stats, err := srv.GetSwitchStats(ctx)
+		if err != nil {
+			logger.ErrorContext(ctx, "Error getting switch stats: %v", err)
+			return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
 				Success: false,
-				Error:   "Switch not found",
+				Error:   err.Error(),
 			})
 		}
 
+		logger.InfoContext(ctx, "Successfully retrieved switch statistics")
+
 		return c.JSON(map[string]interface{}{
-			"data": map[string]interface{}{
-				"neighbors": switchInfo.Neighbors,
-				"count":     len(switchInfo.Neighbors),
-			},
+			"data":    stats,
 			"success": true,
 		})
 	}

@@ -1684,28 +1684,53 @@ func (x *DeleteAllFirewallsResponse) GetMessage() string {
 	return ""
 }
 
-type FirewallListItem struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Asset         *FirewallAsset         `protobuf:"bytes,1,opt,name=asset,proto3" json:"asset,omitempty"`
-	Details       *FirewallDetails       `protobuf:"bytes,2,opt,name=details,proto3" json:"details,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+type FirewallListItemFlat struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Asset fields
+	AssetId          string  `protobuf:"bytes,1,opt,name=asset_id,json=assetId,proto3" json:"asset_id,omitempty"`
+	VendorCode       string  `protobuf:"bytes,2,opt,name=vendor_code,json=vendorCode,proto3" json:"vendor_code,omitempty"`
+	Name             string  `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	Domain           string  `protobuf:"bytes,4,opt,name=domain,proto3" json:"domain,omitempty"`
+	Hostname         string  `protobuf:"bytes,5,opt,name=hostname,proto3" json:"hostname,omitempty"`
+	OsName           string  `protobuf:"bytes,6,opt,name=os_name,json=osName,proto3" json:"os_name,omitempty"`
+	OsVersion        string  `protobuf:"bytes,7,opt,name=os_version,json=osVersion,proto3" json:"os_version,omitempty"`
+	Description      string  `protobuf:"bytes,8,opt,name=description,proto3" json:"description,omitempty"`
+	AssetType        string  `protobuf:"bytes,9,opt,name=asset_type,json=assetType,proto3" json:"asset_type,omitempty"`
+	DiscoveredBy     string  `protobuf:"bytes,10,opt,name=discovered_by,json=discoveredBy,proto3" json:"discovered_by,omitempty"`
+	Risk             int32   `protobuf:"varint,11,opt,name=risk,proto3" json:"risk,omitempty"`
+	LoggingCompleted bool    `protobuf:"varint,12,opt,name=logging_completed,json=loggingCompleted,proto3" json:"logging_completed,omitempty"`
+	AssetValue       float64 `protobuf:"fixed64,13,opt,name=asset_value,json=assetValue,proto3" json:"asset_value,omitempty"`
+	// Details fields
+	DetailsId       string `protobuf:"bytes,14,opt,name=details_id,json=detailsId,proto3" json:"details_id,omitempty"`
+	Model           string `protobuf:"bytes,15,opt,name=model,proto3" json:"model,omitempty"`
+	FirmwareVersion string `protobuf:"bytes,16,opt,name=firmware_version,json=firmwareVersion,proto3" json:"firmware_version,omitempty"`
+	SerialNumber    string `protobuf:"bytes,17,opt,name=serial_number,json=serialNumber,proto3" json:"serial_number,omitempty"`
+	IsHaEnabled     bool   `protobuf:"varint,18,opt,name=is_ha_enabled,json=isHaEnabled,proto3" json:"is_ha_enabled,omitempty"`
+	HaRole          string `protobuf:"bytes,19,opt,name=ha_role,json=haRole,proto3" json:"ha_role,omitempty"`
+	ManagementIp    string `protobuf:"bytes,20,opt,name=management_ip,json=managementIp,proto3" json:"management_ip,omitempty"`
+	SiteName        string `protobuf:"bytes,21,opt,name=site_name,json=siteName,proto3" json:"site_name,omitempty"`
+	Location        string `protobuf:"bytes,22,opt,name=location,proto3" json:"location,omitempty"`
+	Status          string `protobuf:"bytes,23,opt,name=status,proto3" json:"status,omitempty"`
+	LastSync        string `protobuf:"bytes,24,opt,name=last_sync,json=lastSync,proto3" json:"last_sync,omitempty"`
+	SyncStatus      string `protobuf:"bytes,25,opt,name=sync_status,json=syncStatus,proto3" json:"sync_status,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
-func (x *FirewallListItem) Reset() {
-	*x = FirewallListItem{}
+func (x *FirewallListItemFlat) Reset() {
+	*x = FirewallListItemFlat{}
 	mi := &file_firewall_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *FirewallListItem) String() string {
+func (x *FirewallListItemFlat) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*FirewallListItem) ProtoMessage() {}
+func (*FirewallListItemFlat) ProtoMessage() {}
 
-func (x *FirewallListItem) ProtoReflect() protoreflect.Message {
+func (x *FirewallListItemFlat) ProtoReflect() protoreflect.Message {
 	mi := &file_firewall_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -1717,23 +1742,184 @@ func (x *FirewallListItem) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use FirewallListItem.ProtoReflect.Descriptor instead.
-func (*FirewallListItem) Descriptor() ([]byte, []int) {
+// Deprecated: Use FirewallListItemFlat.ProtoReflect.Descriptor instead.
+func (*FirewallListItemFlat) Descriptor() ([]byte, []int) {
 	return file_firewall_proto_rawDescGZIP(), []int{21}
 }
 
-func (x *FirewallListItem) GetAsset() *FirewallAsset {
+func (x *FirewallListItemFlat) GetAssetId() string {
 	if x != nil {
-		return x.Asset
+		return x.AssetId
 	}
-	return nil
+	return ""
 }
 
-func (x *FirewallListItem) GetDetails() *FirewallDetails {
+func (x *FirewallListItemFlat) GetVendorCode() string {
 	if x != nil {
-		return x.Details
+		return x.VendorCode
 	}
-	return nil
+	return ""
+}
+
+func (x *FirewallListItemFlat) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *FirewallListItemFlat) GetDomain() string {
+	if x != nil {
+		return x.Domain
+	}
+	return ""
+}
+
+func (x *FirewallListItemFlat) GetHostname() string {
+	if x != nil {
+		return x.Hostname
+	}
+	return ""
+}
+
+func (x *FirewallListItemFlat) GetOsName() string {
+	if x != nil {
+		return x.OsName
+	}
+	return ""
+}
+
+func (x *FirewallListItemFlat) GetOsVersion() string {
+	if x != nil {
+		return x.OsVersion
+	}
+	return ""
+}
+
+func (x *FirewallListItemFlat) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *FirewallListItemFlat) GetAssetType() string {
+	if x != nil {
+		return x.AssetType
+	}
+	return ""
+}
+
+func (x *FirewallListItemFlat) GetDiscoveredBy() string {
+	if x != nil {
+		return x.DiscoveredBy
+	}
+	return ""
+}
+
+func (x *FirewallListItemFlat) GetRisk() int32 {
+	if x != nil {
+		return x.Risk
+	}
+	return 0
+}
+
+func (x *FirewallListItemFlat) GetLoggingCompleted() bool {
+	if x != nil {
+		return x.LoggingCompleted
+	}
+	return false
+}
+
+func (x *FirewallListItemFlat) GetAssetValue() float64 {
+	if x != nil {
+		return x.AssetValue
+	}
+	return 0
+}
+
+func (x *FirewallListItemFlat) GetDetailsId() string {
+	if x != nil {
+		return x.DetailsId
+	}
+	return ""
+}
+
+func (x *FirewallListItemFlat) GetModel() string {
+	if x != nil {
+		return x.Model
+	}
+	return ""
+}
+
+func (x *FirewallListItemFlat) GetFirmwareVersion() string {
+	if x != nil {
+		return x.FirmwareVersion
+	}
+	return ""
+}
+
+func (x *FirewallListItemFlat) GetSerialNumber() string {
+	if x != nil {
+		return x.SerialNumber
+	}
+	return ""
+}
+
+func (x *FirewallListItemFlat) GetIsHaEnabled() bool {
+	if x != nil {
+		return x.IsHaEnabled
+	}
+	return false
+}
+
+func (x *FirewallListItemFlat) GetHaRole() string {
+	if x != nil {
+		return x.HaRole
+	}
+	return ""
+}
+
+func (x *FirewallListItemFlat) GetManagementIp() string {
+	if x != nil {
+		return x.ManagementIp
+	}
+	return ""
+}
+
+func (x *FirewallListItemFlat) GetSiteName() string {
+	if x != nil {
+		return x.SiteName
+	}
+	return ""
+}
+
+func (x *FirewallListItemFlat) GetLocation() string {
+	if x != nil {
+		return x.Location
+	}
+	return ""
+}
+
+func (x *FirewallListItemFlat) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *FirewallListItemFlat) GetLastSync() string {
+	if x != nil {
+		return x.LastSync
+	}
+	return ""
+}
+
+func (x *FirewallListItemFlat) GetSyncStatus() string {
+	if x != nil {
+		return x.SyncStatus
+	}
+	return ""
 }
 
 type ListFirewallsRequest struct {
@@ -1789,9 +1975,9 @@ func (x *ListFirewallsRequest) GetPage() int32 {
 }
 
 type ListFirewallsResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Contents      []*FirewallListItem    `protobuf:"bytes,1,rep,name=Contents,proto3" json:"Contents,omitempty"`
-	Count         int32                  `protobuf:"varint,2,opt,name=count,proto3" json:"count,omitempty"`
+	state         protoimpl.MessageState  `protogen:"open.v1"`
+	Contents      []*FirewallListItemFlat `protobuf:"bytes,1,rep,name=contents,proto3" json:"contents,omitempty"`
+	Count         int32                   `protobuf:"varint,2,opt,name=count,proto3" json:"count,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1826,7 +2012,7 @@ func (*ListFirewallsResponse) Descriptor() ([]byte, []int) {
 	return file_firewall_proto_rawDescGZIP(), []int{23}
 }
 
-func (x *ListFirewallsResponse) GetContents() []*FirewallListItem {
+func (x *ListFirewallsResponse) GetContents() []*FirewallListItemFlat {
 	if x != nil {
 		return x.Contents
 	}
@@ -2006,15 +2192,45 @@ const file_firewall_proto_rawDesc = "" +
 	"\x19DeleteAllFirewallsRequest\"P\n" +
 	"\x1aDeleteAllFirewallsResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\"d\n" +
-	"\x10FirewallListItem\x12$\n" +
-	"\x05asset\x18\x01 \x01(\v2\x0e.FirewallAssetR\x05asset\x12*\n" +
-	"\adetails\x18\x02 \x01(\v2\x10.FirewallDetailsR\adetails\"@\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"\x90\x06\n" +
+	"\x14FirewallListItemFlat\x12\x19\n" +
+	"\basset_id\x18\x01 \x01(\tR\aassetId\x12\x1f\n" +
+	"\vvendor_code\x18\x02 \x01(\tR\n" +
+	"vendorCode\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\x12\x16\n" +
+	"\x06domain\x18\x04 \x01(\tR\x06domain\x12\x1a\n" +
+	"\bhostname\x18\x05 \x01(\tR\bhostname\x12\x17\n" +
+	"\aos_name\x18\x06 \x01(\tR\x06osName\x12\x1d\n" +
+	"\n" +
+	"os_version\x18\a \x01(\tR\tosVersion\x12 \n" +
+	"\vdescription\x18\b \x01(\tR\vdescription\x12\x1d\n" +
+	"\n" +
+	"asset_type\x18\t \x01(\tR\tassetType\x12#\n" +
+	"\rdiscovered_by\x18\n" +
+	" \x01(\tR\fdiscoveredBy\x12\x12\n" +
+	"\x04risk\x18\v \x01(\x05R\x04risk\x12+\n" +
+	"\x11logging_completed\x18\f \x01(\bR\x10loggingCompleted\x12\x1f\n" +
+	"\vasset_value\x18\r \x01(\x01R\n" +
+	"assetValue\x12\x1d\n" +
+	"\n" +
+	"details_id\x18\x0e \x01(\tR\tdetailsId\x12\x14\n" +
+	"\x05model\x18\x0f \x01(\tR\x05model\x12)\n" +
+	"\x10firmware_version\x18\x10 \x01(\tR\x0ffirmwareVersion\x12#\n" +
+	"\rserial_number\x18\x11 \x01(\tR\fserialNumber\x12\"\n" +
+	"\ris_ha_enabled\x18\x12 \x01(\bR\visHaEnabled\x12\x17\n" +
+	"\aha_role\x18\x13 \x01(\tR\x06haRole\x12#\n" +
+	"\rmanagement_ip\x18\x14 \x01(\tR\fmanagementIp\x12\x1b\n" +
+	"\tsite_name\x18\x15 \x01(\tR\bsiteName\x12\x1a\n" +
+	"\blocation\x18\x16 \x01(\tR\blocation\x12\x16\n" +
+	"\x06status\x18\x17 \x01(\tR\x06status\x12\x1b\n" +
+	"\tlast_sync\x18\x18 \x01(\tR\blastSync\x12\x1f\n" +
+	"\vsync_status\x18\x19 \x01(\tR\n" +
+	"syncStatus\"@\n" +
 	"\x14ListFirewallsRequest\x12\x14\n" +
 	"\x05limit\x18\x01 \x01(\x05R\x05limit\x12\x12\n" +
-	"\x04page\x18\x02 \x01(\x05R\x04page\"\\\n" +
-	"\x15ListFirewallsResponse\x12-\n" +
-	"\bContents\x18\x01 \x03(\v2\x11.FirewallListItemR\bContents\x12\x14\n" +
+	"\x04page\x18\x02 \x01(\x05R\x04page\"`\n" +
+	"\x15ListFirewallsResponse\x121\n" +
+	"\bcontents\x18\x01 \x03(\v2\x15.FirewallListItemFlatR\bcontents\x12\x14\n" +
 	"\x05count\x18\x02 \x01(\x05R\x05countB:Z8gitlab.apk-group.net/siem/backend/asset-discovery/api/pbb\x06proto3"
 
 var (
@@ -2052,7 +2268,7 @@ var file_firewall_proto_goTypes = []any{
 	(*DeleteFirewallBatchResponse)(nil), // 18: DeleteFirewallBatchResponse
 	(*DeleteAllFirewallsRequest)(nil),   // 19: DeleteAllFirewallsRequest
 	(*DeleteAllFirewallsResponse)(nil),  // 20: DeleteAllFirewallsResponse
-	(*FirewallListItem)(nil),            // 21: FirewallListItem
+	(*FirewallListItemFlat)(nil),        // 21: FirewallListItemFlat
 	(*ListFirewallsRequest)(nil),        // 22: ListFirewallsRequest
 	(*ListFirewallsResponse)(nil),       // 23: ListFirewallsResponse
 }
@@ -2078,14 +2294,12 @@ var file_firewall_proto_depIdxs = []int32{
 	5,  // 18: UpdateFirewallRequest.interfaces:type_name -> FirewallInterface
 	6,  // 19: UpdateFirewallRequest.vlans:type_name -> FirewallVLAN
 	7,  // 20: UpdateFirewallRequest.policies:type_name -> FirewallPolicy
-	2,  // 21: FirewallListItem.asset:type_name -> FirewallAsset
-	3,  // 22: FirewallListItem.details:type_name -> FirewallDetails
-	21, // 23: ListFirewallsResponse.Contents:type_name -> FirewallListItem
-	24, // [24:24] is the sub-list for method output_type
-	24, // [24:24] is the sub-list for method input_type
-	24, // [24:24] is the sub-list for extension type_name
-	24, // [24:24] is the sub-list for extension extendee
-	0,  // [0:24] is the sub-list for field type_name
+	21, // 21: ListFirewallsResponse.contents:type_name -> FirewallListItemFlat
+	22, // [22:22] is the sub-list for method output_type
+	22, // [22:22] is the sub-list for method input_type
+	22, // [22:22] is the sub-list for extension type_name
+	22, // [22:22] is the sub-list for extension extendee
+	0,  // [0:22] is the sub-list for field type_name
 }
 
 func init() { file_firewall_proto_init() }
